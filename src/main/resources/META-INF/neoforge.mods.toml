@@ -1,0 +1,28 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="All-Rights-Reserved"
+
+[[mods]]
+modId="pickup"
+version="${version}"
+displayName="Pickup"
+displayURL="https://github.com/thecreeper3326/pickup"
+authors="TheCreeper3326 [John Seagull]"
+description="''Pick up items using right click''"
+
+[[dependencies.pickup]]
+modId="neoforge"
+type="required"
+versionRange="[21.1,)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.pickup]]
+modId="minecraft"
+type="required"
+versionRange="[1.21.1,1.21.2)"
+ordering="NONE"
+side="BOTH"
+
+[[mixins]]
+config="pickup.mixins.json"
