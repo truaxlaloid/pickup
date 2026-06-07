@@ -56,7 +56,7 @@ public class Pickup {
                     for (int i = 0; i < PickupConfig.PARTICLES.get(); i++) {
                         level.addParticle(
                                 new ItemParticleOption(ParticleTypes.ITEM, item.getItem()),
-                                true, true,
+                                true, 
                                 item.getX(), item.getY() + (item.getBbHeight() / 2), item.getZ(),
                                 (Math.random() - 0.5) * 0.2,
                                 Math.random() * 0.2,
