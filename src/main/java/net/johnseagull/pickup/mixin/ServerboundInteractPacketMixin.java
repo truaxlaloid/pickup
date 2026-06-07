@@ -26,16 +26,17 @@ public abstract class ServerboundInteractPacketMixin {
 
         IN_DISPATCH.set(true);
         try {
-            // Create a custom handler wrapper to intercept only the onAttack() call
+            // Create a custom handler wrapper to intercept the onAttack() call
             ServerboundInteractPacket.Handler customHandler = new ServerboundInteractPacket.Handler() {
                 @Override
                 public void onInteraction(net.minecraft.world.InteractionHand hand) {
                     handler.onInteraction(hand);
                 }
 
+                // Correct 1.21.1 signature (previously onInteractionAt)
                 @Override
-                public void onInteractionAt(net.minecraft.world.InteractionHand hand, Vec3 location) {
-                    handler.onInteractionAt(hand, location);
+                public void onInteraction(net.minecraft.world.InteractionHand hand, Vec3 interactionLocation) {
+                    handler.onInteraction(hand, interactionLocation);
                 }
 
                 @Override
@@ -60,11 +61,4 @@ public abstract class ServerboundInteractPacketMixin {
                 }
             };
 
-            // Re-dispatch using the custom wrapper and cancel the original check
-            ((ServerboundInteractPacket) (Object) this).dispatch(customHandler);
-            ci.cancel();
-        } finally {
-            IN_DISPATCH.set(false);
-        }
-    }
-}
+            // Re-dispatch
