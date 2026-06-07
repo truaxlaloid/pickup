@@ -23,6 +23,14 @@ public abstract class EntityMixin {
         }
     }
 
+    // Prevents the client from sending attack packets when left-clicking a dropped item
+    @Inject(method = "skipAttackInteraction", at = @At("HEAD"), cancellable = true)
+    private void preventItemAttack(Entity attacker, CallbackInfoReturnable<Boolean> cir) {
+        if ((Entity) (Object) this instanceof ItemEntity) {
+            cir.setReturnValue(true);
+        }
+    }
+
     @Inject(method = "getDimensions", at = @At("HEAD"), cancellable = true)
     private void itemDementia(Pose pose, CallbackInfoReturnable<EntityDimensions> cir) {
         if (((Entity) (Object) this) instanceof ItemEntity) {
