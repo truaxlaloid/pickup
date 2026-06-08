@@ -33,7 +33,6 @@ public abstract class ServerboundInteractPacketMixin {
                     handler.onInteraction(hand);
                 }
 
-                // Correct 1.21.1 signature (previously onInteractionAt)
                 @Override
                 public void onInteraction(net.minecraft.world.InteractionHand hand, Vec3 interactionLocation) {
                     handler.onInteraction(hand, interactionLocation);
@@ -61,4 +60,11 @@ public abstract class ServerboundInteractPacketMixin {
                 }
             };
 
-            // Re-dispatch
+            // Re-dispatch using the custom wrapper and cancel the original check
+            ((ServerboundInteractPacket) (Object) this).dispatch(customHandler);
+            ci.cancel();
+        } finally {
+            IN_DISPATCH.set(false);
+        }
+    }
+}
