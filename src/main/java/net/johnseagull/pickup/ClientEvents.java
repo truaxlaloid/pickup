@@ -16,8 +16,8 @@ import net.neoforged.neoforge.client.event.InputEvent;
 public class ClientEvents {
 
     @SubscribeEvent
-    public static void onClickInput(InputEvent.ClickInputEvent event) {
-        if (event.isAttack()) { // Left-click (Attack)
+    public static void onClickInput(InputEvent.InteractionKeyMappingTriggered event) {
+        if (event.isAttack()) { // Left-click / Attack key binding
             Minecraft mc = Minecraft.getInstance();
             if (mc.player != null && mc.level != null && mc.hitResult != null) {
                 if (mc.hitResult.getType() == HitResult.Type.ENTITY) {
