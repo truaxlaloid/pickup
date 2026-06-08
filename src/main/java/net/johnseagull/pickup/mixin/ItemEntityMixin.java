@@ -7,12 +7,14 @@ import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import javax.annotation.Nullable;
+import net.minecraft.world.phys.AABB;
 import org.spongepowered.asm.mixin.*;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import javax.annotation.Nullable;
 import java.util.UUID;
 
 @Mixin(ItemEntity.class)
@@ -57,6 +59,13 @@ public class ItemEntityMixin implements ItemEntityInterface {
     @Inject(method = "tick", at = @At("TAIL"))
     public void tick(CallbackInfo ci) {
         ((ItemEntity)(Object)this).refreshDimensions();
+    }
+
+    // Redirects the bounding box expansion for item merging to use the configured value
+    @Redirect(method = "mergeWithNeighbours", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/phys/AABB;inflate(DDD)Lnet/minecraft/world/phys/AABB;"))
+    private AABB redirectInflate(AABB instance, double x, double y, double z) {
+        double radius = PickupConfig.ITEM_GROUPING_RADIUS.get();
+        return instance.inflate(radius, y, radius);
     }
 
     @Override
