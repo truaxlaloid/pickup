@@ -10,6 +10,7 @@ public class PickupConfig {
     public static final ModConfigSpec.BooleanValue NEW_BEHAVIOR;
     public static final ModConfigSpec.BooleanValue VANILLA_BEHAVIOR;
     public static final ModConfigSpec.BooleanValue USE_CURRENT_SLOT;
+    public static final ModConfigSpec.BooleanValue NEED_EMPTY_HAND;
 
     // Visual settings
     public static final ModConfigSpec.BooleanValue ITEM_GLOW;
@@ -23,6 +24,10 @@ public class PickupConfig {
     public static final ModConfigSpec.BooleanValue ENABLE_MODIFIED_HITBOX;
     public static final ModConfigSpec.DoubleValue HITBOX_WIDTH;
     public static final ModConfigSpec.DoubleValue HITBOX_HEIGHT;
+    public static final ModConfigSpec.BooleanValue HIT_THROUGH_ITEMS;
+
+    // Gameplay adjustments
+    public static final ModConfigSpec.DoubleValue ITEM_GROUPING_RADIUS;
 
     static {
         BUILDER.push("General Settings");
@@ -30,8 +35,10 @@ public class PickupConfig {
                 .define("newBehavior", true);
         VANILLA_BEHAVIOR = BUILDER.comment("Vanilla pickup behavior - Lets players also pick up items normally")
                 .define("vanillaBehavior", false);
-        USE_CURRENT_SLOT = BUILDER.comment("Pickup to current slot - If right click pickup is enabled, picked up items will be placed in the player's main hand if empty. If this is disabled or the player has an item in their hand, it will be picked up as it would be in vanilla")
+        USE_CURRENT_SLOT = BUILDER.comment("Pickup to current slot - If right click pickup is enabled, picked up items will be placed in the player's main hand if empty.")
                 .define("useCurrentSlot", true);
+        NEED_EMPTY_HAND = BUILDER.comment("Need empty hand - If true, players must have an empty main hand to right-click and pick up items")
+                .define("needEmptyHand", false);
         BUILDER.pop();
 
         BUILDER.push("Visual Settings");
@@ -52,10 +59,17 @@ public class PickupConfig {
         BUILDER.push("Hitbox Settings");
         ENABLE_MODIFIED_HITBOX = BUILDER.comment("Modified Hitbox - Modify hitboxes of item entities to make interaction easier")
                 .define("enableModifiedHitbox", true);
-        HITBOX_WIDTH = BUILDER.comment("Width [Diameter] - Diameter of the hitbox. Default 0.25F")
+        HITBOX_WIDTH = BUILDER.comment("Width [Diameter] - Diameter of the custom hitbox. Default is 0.25F")
                 .defineInRange("hitboxWidth", 0.3, 0.1, 1.0);
-        HITBOX_HEIGHT = BUILDER.comment("Height - Height of the hitbox. Default 0.25F")
+        HITBOX_HEIGHT = BUILDER.comment("Height - Height of the custom hitbox. Default is 0.25F")
                 .defineInRange("hitboxHeight", 0.5, 0.1, 1.0);
+        HIT_THROUGH_ITEMS = BUILDER.comment("Hit Through Items - If true, left-clicking while looking at an item will pass through to break blocks or hit mobs behind it")
+                .define("hitThroughItems", true);
+        BUILDER.pop();
+
+        BUILDER.push("Gameplay Adjustments");
+        ITEM_GROUPING_RADIUS = BUILDER.comment("Item Grouping Radius - The horizontal distance (in blocks) at which dropped items will merge together on the ground. Default is 0.5")
+                .defineInRange("itemGroupingRadius", 0.5, 0.0, 16.0);
         BUILDER.pop();
 
         SPEC = BUILDER.build();
