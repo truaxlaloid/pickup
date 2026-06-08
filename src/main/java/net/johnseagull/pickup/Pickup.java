@@ -47,9 +47,6 @@ public class Pickup {
     public static ItemEntity getTargetedItem(ServerPlayer player, float range) {
         Vec3 eyePos = player.getEyePosition();
         Vec3 end = eyePos.add(player.getLookAngle().scale(range));
-        
-        // Using ClipContext.Block.COLLIDER and ClipContext.Fluid.NONE 
-        // allows the raycast to pass straight through fluids (water) and non-solid blocks (grass, flowers)
         BlockHitResult hit = player.level().clip(new ClipContext(
                 eyePos, end,
                 ClipContext.Block.COLLIDER,
@@ -79,6 +76,11 @@ public class Pickup {
 
     private boolean tryPickup(ServerPlayer player, ItemEntity item, InteractionHand hand) {
         if (item == null || !item.isAlive()) return false;
+
+        // Check if hand restriction configuration is enabled
+        if (PickupConfig.NEED_EMPTY_HAND.get() && !player.getMainHandItem().isEmpty()) {
+            return false;
+        }
 
         player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.ITEM_PICKUP, player.getSoundSource(), 1.0F, 1.0F);
 
@@ -125,7 +127,6 @@ public class Pickup {
         }
     }
 
-    // Handles picking up items when the player clicked on block occlusions (grass, flowers, water)
     @SubscribeEvent
     public void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
         if (event.getHand() == InteractionHand.MAIN_HAND && PickupConfig.NEW_BEHAVIOR.get() && event.getEntity() instanceof ServerPlayer player) {
