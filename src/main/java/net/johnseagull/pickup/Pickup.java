@@ -77,7 +77,7 @@ public class Pickup {
     private boolean tryPickup(ServerPlayer player, ItemEntity item, InteractionHand hand) {
         if (item == null || !item.isAlive()) return false;
 
-        // Check if hand restriction configuration is enabled
+        // Check hand restriction configurations
         if (PickupConfig.NEED_EMPTY_HAND.get() && !player.getMainHandItem().isEmpty()) {
             return false;
         }
@@ -127,8 +127,27 @@ public class Pickup {
         }
     }
 
+    // Handles picking up items when clicking on block occlusions (grass, flowers, ground)
     @SubscribeEvent
     public void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
+        if (event.getHand() == InteractionHand.MAIN_HAND && PickupConfig.NEW_BEHAVIOR.get() && event.getEntity() instanceof ServerPlayer player) {
+            float range = PickupConfig.OVERLAY_RANGE.get().floatValue();
+            if (PickupConfig.USE_PLAYER_RANGE.get()) {
+                range = (float) player.entityInteractionRange();
+            }
+            ItemEntity item = getTargetedItem(player, range);
+            if (item != null) {
+                if (tryPickup(player, item, event.getHand())) {
+                    event.setCancellationResult(InteractionResult.SUCCESS);
+                    event.setCanceled(true);
+                }
+            }
+        }
+    }
+
+    // Handles picking up items when right-clicking the air (while holding an item)
+    @SubscribeEvent
+    public void onRightClickItem(PlayerInteractEvent.RightClickItem event) {
         if (event.getHand() == InteractionHand.MAIN_HAND && PickupConfig.NEW_BEHAVIOR.get() && event.getEntity() instanceof ServerPlayer player) {
             float range = PickupConfig.OVERLAY_RANGE.get().floatValue();
             if (PickupConfig.USE_PLAYER_RANGE.get()) {
