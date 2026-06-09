@@ -45,6 +45,13 @@ public class Pickup {
         NeoForge.EVENT_BUS.register(this);
     }
 
+    public static float getReach(ServerPlayer player) {
+        if (PickupConfig.USE_CUSTOM_REACH.get()) {
+            return PickupConfig.CUSTOM_REACH.get().floatValue();
+        }
+        return (float) player.entityInteractionRange();
+    }
+
     public static ItemEntity getTargetedItem(ServerPlayer player, float range) {
         Vec3 eyePos = player.getEyePosition();
         Vec3 end = eyePos.add(player.getLookAngle().scale(range));
@@ -89,19 +96,16 @@ public class Pickup {
         int originalCount = itemStack.getCount();
         boolean addedAny = false;
 
-        // Process inventory checks before playing sound or discarding the entity
         if (player.getMainHandItem().isEmpty() && PickupConfig.USE_CURRENT_SLOT.get()) {
             player.setItemInHand(hand, itemStack.copy());
             itemStack.setCount(0);
             addedAny = true;
         } else {
-            // Standard vanilla inventory insertion (returns true if at least 1 item was added)
             if (player.getInventory().add(itemStack)) {
                 addedAny = true;
             }
         }
 
-        // If the inventory is completely full and didn't accept any items, block the pickup
         if (!addedAny) {
             return false;
         }
@@ -128,8 +132,6 @@ public class Pickup {
         player.onItemPickup(item);
         player.awardStat(Stats.ITEM_PICKED_UP.get(itemStack.getItem()), pickedUpCount);
 
-        // Only discard the item entity if the entire stack was picked up.
-        // Otherwise, keep the entity on the ground with the updated stack size.
         if (itemStack.isEmpty()) {
             item.discard();
         } else {
@@ -151,14 +153,10 @@ public class Pickup {
         }
     }
 
-    // Handles picking up items when clicking on block occlusions (grass, flowers, ground)
     @SubscribeEvent
     public void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
         if (event.getHand() == InteractionHand.MAIN_HAND && PickupConfig.NEW_BEHAVIOR.get() && event.getEntity() instanceof ServerPlayer player) {
-            float range = PickupConfig.OVERLAY_RANGE.get().floatValue();
-            if (PickupConfig.USE_PLAYER_RANGE.get()) {
-                range = (float) player.entityInteractionRange();
-            }
+            float range = getReach(player);
             ItemEntity item = getTargetedItem(player, range);
             if (item != null) {
                 if (tryPickup(player, item, event.getHand())) {
@@ -169,14 +167,10 @@ public class Pickup {
         }
     }
 
-    // Handles picking up items when right-clicking the air (while holding an item)
     @SubscribeEvent
     public void onRightClickItem(PlayerInteractEvent.RightClickItem event) {
         if (event.getHand() == InteractionHand.MAIN_HAND && PickupConfig.NEW_BEHAVIOR.get() && event.getEntity() instanceof ServerPlayer player) {
-            float range = PickupConfig.OVERLAY_RANGE.get().floatValue();
-            if (PickupConfig.USE_PLAYER_RANGE.get()) {
-                range = (float) player.entityInteractionRange();
-            }
+            float range = getReach(player);
             ItemEntity item = getTargetedItem(player, range);
             if (item != null) {
                 if (tryPickup(player, item, event.getHand())) {
@@ -189,10 +183,15 @@ public class Pickup {
 
     @SubscribeEvent
     public void onServerTick(ServerTickEvent.Post event) {
+        int rate = PickupConfig.VISUAL_TICK_RATE.get();
+        if (event.getServer().getTickCount() % rate != 0) {
+            return;
+        }
+
         for (ServerPlayer player : event.getServer().getPlayerList().getPlayers()) {
             float range = PickupConfig.OVERLAY_RANGE.get().floatValue();
             if (PickupConfig.USE_PLAYER_RANGE.get()) {
-                range = (float) player.entityInteractionRange();
+                range = getReach(player);
             }
 
             ItemEntity coolItem = getTargetedItem(player, range);
@@ -212,16 +211,34 @@ public class Pickup {
                         Component name = Component.empty()
                                 .append(item.getItem().getHoverName())
                                 .append(Component.literal(" x" + item.getItem().getCount()).withStyle(ChatFormatting.GRAY));
-                        item.setCustomName(name);
-                        item.setCustomNameVisible(true);
+                        
+                        // Performance Optimization: Check current state to prevent redundant metadata sync packets
+                        Component currentName = item.getCustomName();
+                        if (currentName == null || !currentName.getString().equals(name.getString())) {
+                            item.setCustomName(name);
+                        }
+                        if (!item.isCustomNameVisible()) {
+                            item.setCustomNameVisible(true);
+                        }
                     }
                     if (PickupConfig.ITEM_GLOW.get()) {
-                        item.setGlowingTag(true);
+                        if (!item.isGlowing()) {
+                            item.setGlowingTag(true);
+                        }
+                    } else {
+                        if (item.isGlowing()) {
+                            item.setGlowingTag(false);
+                        }
                     }
                 } else {
-                    item.setCustomName(Component.literal(""));
-                    item.setCustomNameVisible(false);
-                    item.setGlowingTag(false);
+                    // Performance Optimization: Check current state to prevent redundant metadata sync packets
+                    if (item.isCustomNameVisible()) {
+                        item.setCustomName(null);
+                        item.setCustomNameVisible(false);
+                    }
+                    if (item.isGlowing()) {
+                        item.setGlowingTag(false);
+                    }
                 }
             }
         }
