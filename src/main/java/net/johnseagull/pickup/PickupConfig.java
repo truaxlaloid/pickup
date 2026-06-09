@@ -11,6 +11,8 @@ public class PickupConfig {
     public static final ModConfigSpec.BooleanValue VANILLA_BEHAVIOR;
     public static final ModConfigSpec.BooleanValue USE_CURRENT_SLOT;
     public static final ModConfigSpec.BooleanValue NEED_EMPTY_HAND;
+    public static final ModConfigSpec.BooleanValue USE_CUSTOM_REACH;
+    public static final ModConfigSpec.DoubleValue CUSTOM_REACH;
 
     // Visual settings
     public static final ModConfigSpec.BooleanValue ITEM_GLOW;
@@ -19,6 +21,7 @@ public class PickupConfig {
     public static final ModConfigSpec.BooleanValue USE_PLAYER_RANGE;
     public static final ModConfigSpec.IntValue PARTICLES;
     public static final ModConfigSpec.BooleanValue ENABLE_PARTICLES;
+    public static final ModConfigSpec.IntValue VISUAL_TICK_RATE;
 
     // Hitbox settings
     public static final ModConfigSpec.BooleanValue ENABLE_MODIFIED_HITBOX;
@@ -39,6 +42,10 @@ public class PickupConfig {
                 .define("useCurrentSlot", true);
         NEED_EMPTY_HAND = BUILDER.comment("Need empty hand - If true, players must have an empty main hand to right-click and pick up items")
                 .define("needEmptyHand", false);
+        USE_CUSTOM_REACH = BUILDER.comment("Use Custom Reach - If true, the mod will use the configured custom reach distance for right-click pickups instead of the player's vanilla entity interaction range")
+                .define("useCustomReach", false);
+        CUSTOM_REACH = BUILDER.comment("Custom Reach - The maximum distance (in blocks) from which a player can right-click to pick up items. Only active if [Use Custom Reach] is enabled")
+                .defineInRange("customReach", 4.5, 1.0, 10.0);
         BUILDER.pop();
 
         BUILDER.push("Visual Settings");
@@ -54,6 +61,8 @@ public class PickupConfig {
                 .defineInRange("particles", 5, 0, 100);
         ENABLE_PARTICLES = BUILDER.comment("Particles - Show particles when a player picks up an item by right-clicking it")
                 .define("enableParticles", false);
+        VISUAL_TICK_RATE = BUILDER.comment("Visual Tick Rate - How often (in ticks) the server recalculates item outlines and name tags. Increase this value (e.g. 2 or 4) to save server CPU on busy servers. 1 = every tick")
+                .defineInRange("visualTickRate", 2, 1, 20);
         BUILDER.pop();
 
         BUILDER.push("Hitbox Settings");
