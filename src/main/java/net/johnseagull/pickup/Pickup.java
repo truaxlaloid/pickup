@@ -11,6 +11,7 @@ import net.minecraft.stats.Stats;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
@@ -82,7 +83,32 @@ public class Pickup {
             return false;
         }
 
+        ItemStack itemStack = item.getItem();
+        if (itemStack.isEmpty()) return false;
+
+        int originalCount = itemStack.getCount();
+        boolean addedAny = false;
+
+        // Process inventory checks before playing sound or discarding the entity
+        if (player.getMainHandItem().isEmpty() && PickupConfig.USE_CURRENT_SLOT.get()) {
+            player.setItemInHand(hand, itemStack.copy());
+            itemStack.setCount(0);
+            addedAny = true;
+        } else {
+            // Standard vanilla inventory insertion (returns true if at least 1 item was added)
+            if (player.getInventory().add(itemStack)) {
+                addedAny = true;
+            }
+        }
+
+        // If the inventory is completely full and didn't accept any items, block the pickup
+        if (!addedAny) {
+            return false;
+        }
+
         player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.ITEM_PICKUP, player.getSoundSource(), 1.0F, 1.0F);
+
+        int pickedUpCount = originalCount - itemStack.getCount();
 
         if (PickupConfig.ENABLE_PARTICLES.get()) {
             if (player.level() instanceof ServerLevel serverLevel) {
@@ -98,20 +124,18 @@ public class Pickup {
             }
         }
 
+        player.take(item, pickedUpCount);
         player.onItemPickup(item);
-        if (player.getMainHandItem().isEmpty() && PickupConfig.USE_CURRENT_SLOT.get()) {
+        player.awardStat(Stats.ITEM_PICKED_UP.get(itemStack.getItem()), pickedUpCount);
+
+        // Only discard the item entity if the entire stack was picked up.
+        // Otherwise, keep the entity on the ground with the updated stack size.
+        if (itemStack.isEmpty()) {
             item.discard();
-            if (player.getInventory().hasAnyOf(Set.of(item.getItem().getItem()))) {
-                player.addItem(item.getItem());
-            } else {
-                player.setItemInHand(hand, item.getItem());
-            }
-            player.awardStat(Stats.ITEM_PICKED_UP.get(item.getItem().getItem()), item.getItem().getCount());
         } else {
-            item.discard();
-            player.awardStat(Stats.ITEM_PICKED_UP.get(item.getItem().getItem()), item.getItem().getCount());
-            player.addItem(item.getItem());
+            item.setItem(itemStack);
         }
+
         return true;
     }
 
