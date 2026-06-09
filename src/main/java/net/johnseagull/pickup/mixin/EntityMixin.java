@@ -19,11 +19,17 @@ public abstract class EntityMixin {
     @Inject(method = "isPickable", at = @At("HEAD"), cancellable = true)
     private void itemPickup(CallbackInfoReturnable<Boolean> cir) {
         if ((Entity) (Object) this instanceof ItemEntity) {
-            cir.setReturnValue(true);
+            // If on the client and hit-through-items is enabled, make the item target-intangible.
+            // This allows left-clicks and mining to pass straight through natively on every frame.
+            boolean isClient = ((Entity) (Object) this).level().isClientSide();
+            if (isClient && PickupConfig.HIT_THROUGH_ITEMS.get()) {
+                cir.setReturnValue(false);
+            } else {
+                cir.setReturnValue(true);
+            }
         }
     }
 
-    // Prevents the client from sending attack packets when left-clicking a dropped item
     @Inject(method = "skipAttackInteraction", at = @At("HEAD"), cancellable = true)
     private void preventItemAttack(Entity attacker, CallbackInfoReturnable<Boolean> cir) {
         if ((Entity) (Object) this instanceof ItemEntity) {
