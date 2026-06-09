@@ -222,11 +222,11 @@ public class Pickup {
                         }
                     }
                     if (PickupConfig.ITEM_GLOW.get()) {
-                        if (!item.isGlowing()) {
+                        if (!item.isCurrentlyGlowing()) {
                             item.setGlowingTag(true);
                         }
                     } else {
-                        if (item.isGlowing()) {
+                        if (item.isCurrentlyGlowing()) {
                             item.setGlowingTag(false);
                         }
                     }
@@ -236,7 +236,7 @@ public class Pickup {
                         item.setCustomName(null);
                         item.setCustomNameVisible(false);
                     }
-                    if (item.isGlowing()) {
+                    if (item.isCurrentlyGlowing()) {
                         item.setGlowingTag(false);
                     }
                 }
