@@ -112,8 +112,8 @@ public class Pickup {
             }
         }
 
+        // onItemPickup automatically handles adding the StatList.objectPickupStats in 1.8.9
         player.onItemPickup(item, pickedUpCount);
-        player.triggerAchievement(StatList.getObjectsPickUpStats(itemStack.getItem()));
 
         if (itemStack.stackSize <= 0) {
             item.setDead();
