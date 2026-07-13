@@ -1,8 +1,21 @@
 pluginManagement {
     repositories {
-        maven { url = 'https://maven.cleanroommc.com' }
+        maven {
+            name = 'GTNH Maven'
+            url = 'https://nexus.gtnewhorizons.com/repository/public/'
+        }
+        maven { 
+            name = 'CleanroomMC'
+            url = 'https://maven.cleanroommc.com' 
+        }
         gradlePluginPortal()
         mavenCentral()
     }
 }
+
+plugins {
+    // Automatically downloads and provisions JDK 8 in the background
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '0.8.0'
+}
+
 rootProject.name = 'pickup'
