@@ -1,0 +1,16 @@
+[
+{
+  "modid": "pickup",
+  "name": "Pickup",
+  "description": "Pick up items using right click in 1.8.9.",
+  "version": "${version}",
+  "mcversion": "1.8.9",
+  "url": "https://github.com/truaxlaloid/pickup",
+  "updateUrl": "",
+  "authorList": ["TheCreeper3326 [John Seagull]"],
+  "credits": "",
+  "logoFile": "",
+  "screenshots": [],
+  "dependencies": []
+}
+]
