@@ -61,6 +61,15 @@ processResources {
 }
 
 jar {
+    // Prevent duplicate warnings in Gradle 8
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
+    // Explicitly force Gradle to package resources from source into the JAR root
+    from("src/main/resources") {
+        include "pickup.mixins.json"
+        include "mcmod.info"
+    }
+
     manifest {
         attributes([
             "MixinConfigs": "pickup.mixins.json",
