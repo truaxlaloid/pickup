@@ -1,78 +1,41 @@
 plugins {
     id 'java'
-    id 'eclipse'
-    id 'idea'
     id 'maven-publish'
-    id 'net.neoforged.moddev' version '1.0.21'
+    id 'com.gtnewhorizons.retrofuturagradle' version '1.4.1'
 }
 
-version = project.mod_version
-group = 'net.johnseagull'
-
-base {
-    archivesName = project.archives_base_name
-}
+version = "1.0-1.8.9"
+group = "net.johnseagull.pickup"
 
 java {
-    toolchain.languageVersion = JavaLanguageVersion.of(21)
+    toolchain.languageVersion = JavaLanguageVersion.of(8)
 }
 
-neoForge {
-    version = project.neoforge_version
-
-    parchment {
-        mappingsVersion = '2024.07.28'
-        minecraftVersion = '1.21'
-    }
-
-    runs {
-        client {
-            client()
-            systemProperty 'neoforge.enabledGameTestNamespaces', project.archives_base_name
-        }
-
-        server {
-            server()
-            programArgument '--nogui'
-            systemProperty 'neoforge.enabledGameTestNamespaces', project.archives_base_name
-        }
-    }
-
-    mods {
-        "${project.archives_base_name}" {
-            sourceSet sourceSets.main
-        }
+minecraft {
+    version = "1.8.9"
+    mappings = "stable_22"
+    
+    mixin {
+        add sourceSets.main, "pickup.mixins.refmap.json"
     }
 }
-
-sourceSets.main.resources { srcDir 'src/generated/resources' }
 
 repositories {
-    mavenLocal()
     mavenCentral()
+    maven {
+        name = "CleanroomMC"
+        url = "https://maven.cleanroommc.com"
+    }
 }
 
-tasks.withType(JavaCompile).configureEach {
-    options.encoding = 'UTF-8'
+dependencies {
+    annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
 }
 
 processResources {
-    var replaceProperties = [
-            minecraft_version: project.minecraft_version,
-            neoforge_version: project.neoforge_version,
-            version: project.mod_version
-    ]
-    inputs.properties replaceProperties
+    inputs.property "version", project.version
 
-    filesMatching(['META-INF/neoforge.mods.toml']) {
-        expand replaceProperties
-    }
-}
-
-publishing {
-    publications {
-        register('mavenJava', MavenPublication) {
-            from components.java
-        }
+    filesMatching('mcmod.info') {
+        expand 'version': project.version
     }
 }
