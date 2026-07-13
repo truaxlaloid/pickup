@@ -1,78 +1,65 @@
 package net.johnseagull.pickup;
 
-import net.minecraft.ChatFormatting;
-import net.minecraft.core.particles.ItemParticleOption;
-import net.minecraft.core.particles.ParticleTypes;
-import net.minecraft.network.chat.Component;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.stats.Stats;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.InteractionResult;
-import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.ClipContext;
-import net.minecraft.world.phys.BlockHitResult;
-import net.minecraft.world.phys.HitResult;
-import net.minecraft.world.phys.Vec3;
-import net.neoforged.bus.api.IEventBus;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.ModContainer;
-import net.neoforged.fml.common.Mod;
-import net.neoforged.fml.config.ModConfig;
-import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
-import net.neoforged.neoforge.event.tick.ServerTickEvent;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import net.minecraft.entity.item.EntityItem;
+import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.stats.StatList;
+import net.minecraft.util.*;
+import net.minecraft.world.WorldServer;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.entity.player.EntityInteractEvent;
+import net.minecraftforge.event.entity.player.PlayerInteractEvent;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.common.Mod.EventHandler;
+import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
+import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import net.minecraftforge.fml.common.gameevent.TickEvent;
 
 import java.util.List;
-import java.util.Set;
 
-@Mod(Pickup.MODID)
+@Mod(modid = Pickup.MODID, name = "Pickup", version = "1.0", acceptableRemoteVersions = "*")
 public class Pickup {
     public static final String MODID = "pickup";
-    public static final Logger LOGGER = LoggerFactory.getLogger("Pickup");
+    private int serverTicks = 0;
 
-    public Pickup(IEventBus modEventBus, ModContainer modContainer) {
-        LOGGER.info("Initializing Pickup");
-
-        // Register NeoForge Native config
-        modContainer.registerConfig(ModConfig.Type.COMMON, PickupConfig.SPEC);
-
-        // Register events to game bus
-        NeoForge.EVENT_BUS.register(this);
+    @EventHandler
+    public void preInit(FMLPreInitializationEvent event) {
+        PickupConfig.init(event.getSuggestedConfigurationFile());
+        MinecraftForge.EVENT_BUS.register(this);
     }
 
-    public static float getReach(ServerPlayer player) {
-        if (PickupConfig.USE_CUSTOM_REACH.get()) {
-            return PickupConfig.CUSTOM_REACH.get().floatValue();
+    public static float getReach(EntityPlayer player) {
+        if (PickupConfig.USE_CUSTOM_REACH) {
+            return (float) PickupConfig.CUSTOM_REACH;
         }
-        return (float) player.entityInteractionRange();
+        return player.capabilities.isCreativeMode ? 5.0F : 3.0F;
     }
 
-    public static ItemEntity getTargetedItem(ServerPlayer player, float range) {
-        Vec3 eyePos = player.getEyePosition();
-        Vec3 end = eyePos.add(player.getLookAngle().scale(range));
-        BlockHitResult hit = player.level().clip(new ClipContext(
-                eyePos, end,
-                ClipContext.Block.COLLIDER,
-                ClipContext.Fluid.NONE,
-                player
-        ));
-        Vec3 newEnd = (hit.getType() != HitResult.Type.MISS) ? hit.getLocation() : end;
+    public static EntityItem getTargetedItem(EntityPlayerMP player, float range) {
+        Vec3 eyePos = new Vec3(player.posX, player.posY + player.getEyeHeight(), player.posZ);
+        Vec3 lookAngle = player.getLook(1.0F);
+        Vec3 end = eyePos.addVector(lookAngle.xCoord * range, lookAngle.yCoord * range, lookAngle.zCoord * range);
 
-        List<ItemEntity> items = player.level().getEntitiesOfClass(
-                ItemEntity.class,
-                player.getBoundingBox().expandTowards(player.getLookAngle().scale(range))
-        );
-        ItemEntity coolItem = null;
-        float cd = 99999;
-        for (ItemEntity item : items) {
-            var clipResult = item.getBoundingBox().clip(eyePos, newEnd);
-            if (clipResult.isPresent()) {
-                float dist = (float) clipResult.get().distanceTo(eyePos);
+        // Raytrace block collisions
+        MovingObjectPosition hit = player.worldObj.rayTraceBlocks(eyePos, end, false, true, false);
+        Vec3 newEnd = (hit != null && hit.typeOfHit != MovingObjectPosition.MovingObjectType.MISS) ? hit.hitVec : end;
+
+        // Search for items in target path
+        AxisAlignedBB searchBox = player.getEntityBoundingBox()
+                .addCoord(lookAngle.xCoord * range, lookAngle.yCoord * range, lookAngle.zCoord * range)
+                .expand(1.0D, 1.0D, 1.0D);
+                
+        List<EntityItem> items = player.worldObj.getEntitiesWithinAABB(EntityItem.class, searchBox);
+        EntityItem coolItem = null;
+        double cd = 99999.0D;
+
+        for (EntityItem item : items) {
+            MovingObjectPosition clipResult = item.getEntityBoundingBox().calculateIntercept(eyePos, newEnd);
+            if (clipResult != null) {
+                double dist = clipResult.hitVec.distanceTo(eyePos);
                 if (dist < cd) {
                     cd = dist;
                     coolItem = item;
@@ -82,71 +69,73 @@ public class Pickup {
         return coolItem;
     }
 
-    private boolean tryPickup(ServerPlayer player, ItemEntity item, InteractionHand hand) {
-        if (item == null || !item.isAlive()) return false;
+    private boolean tryPickup(EntityPlayerMP player, EntityItem item) {
+        if (item == null || item.isDead) return false;
 
-        // Check hand restriction configurations
-        if (PickupConfig.NEED_EMPTY_HAND.get() && !player.getMainHandItem().isEmpty()) {
+        if (PickupConfig.NEED_EMPTY_HAND && player.getHeldItem() != null) {
             return false;
         }
 
-        ItemStack itemStack = item.getItem();
-        if (itemStack.isEmpty()) return false;
+        ItemStack itemStack = item.getEntityItem();
+        if (itemStack == null || itemStack.stackSize <= 0) return false;
 
-        int originalCount = itemStack.getCount();
+        int originalCount = itemStack.stackSize;
         boolean addedAny = false;
 
-        if (player.getMainHandItem().isEmpty() && PickupConfig.USE_CURRENT_SLOT.get()) {
-            player.setItemInHand(hand, itemStack.copy());
-            itemStack.setCount(0);
+        // 1.8.9 inventory handling
+        if (player.getHeldItem() == null && PickupConfig.USE_CURRENT_SLOT) {
+            player.setCurrentItemOrArmor(0, itemStack.copy());
+            itemStack.stackSize = 0;
             addedAny = true;
         } else {
-            if (player.getInventory().add(itemStack)) {
+            if (player.inventory.addItemStackToInventory(itemStack)) {
                 addedAny = true;
             }
         }
 
-        if (!addedAny) {
-            return false;
-        }
+        if (!addedAny) return false;
 
-        player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.ITEM_PICKUP, player.getSoundSource(), 1.0F, 1.0F);
+        // Play pop sound
+        player.worldObj.playSoundAtEntity(player, "random.pop", 0.2F, ((player.getRNG().nextFloat() - player.getRNG().nextFloat()) * 0.7F + 1.0F) * 2.0F);
 
-        int pickedUpCount = originalCount - itemStack.getCount();
+        int pickedUpCount = originalCount - itemStack.stackSize;
 
-        if (PickupConfig.ENABLE_PARTICLES.get()) {
-            if (player.level() instanceof ServerLevel serverLevel) {
-                serverLevel.sendParticles(
-                        new ItemParticleOption(ParticleTypes.ITEM, item.getItem()),
-                        item.getX(), item.getY() + (item.getBbHeight() / 2), item.getZ(),
-                        PickupConfig.PARTICLES.get(),
+        if (PickupConfig.ENABLE_PARTICLES) {
+            if (player.worldObj instanceof WorldServer) {
+                WorldServer serverWorld = (WorldServer) player.worldObj;
+                serverWorld.spawnParticle(
+                        EnumParticleTypes.ITEM_CRACK,
+                        item.posX, item.posY + (double)(item.height / 2.0F), item.posZ,
+                        PickupConfig.PARTICLES,
                         (Math.random() - 0.5) * 0.2,
                         Math.random() * 0.2,
                         (Math.random() - 0.5) * 0.2,
-                        0.05
+                        0.05,
+                        Item.getIdFromItem(itemStack.getItem()), itemStack.getMetadata()
                 );
             }
         }
 
-        player.take(item, pickedUpCount);
-        player.onItemPickup(item);
-        player.awardStat(Stats.ITEM_PICKED_UP.get(itemStack.getItem()), pickedUpCount);
+        player.onItemPickup(item, pickedUpCount);
+        player.triggerAchievement(StatList.objectPickupStats[Item.getIdFromItem(itemStack.getItem())]);
 
-        if (itemStack.isEmpty()) {
-            item.discard();
+        if (itemStack.stackSize <= 0) {
+            item.setDead();
         } else {
-            item.setItem(itemStack);
+            item.setEntityItemStack(itemStack);
         }
 
         return true;
     }
 
     @SubscribeEvent
-    public void onEntityInteract(PlayerInteractEvent.EntityInteract event) {
-        if (event.getHand() == InteractionHand.MAIN_HAND && PickupConfig.NEW_BEHAVIOR.get()) {
-            if (event.getTarget() instanceof ItemEntity item && event.getEntity() instanceof ServerPlayer player) {
-                if (tryPickup(player, item, event.getHand())) {
-                    event.setCancellationResult(InteractionResult.SUCCESS);
+    public void onPlayerInteract(PlayerInteractEvent event) {
+        if (event.action == PlayerInteractEvent.Action.RIGHT_CLICK_AIR || event.action == PlayerInteractEvent.Action.RIGHT_CLICK_BLOCK) {
+            if (PickupConfig.NEW_BEHAVIOR && event.entityPlayer instanceof EntityPlayerMP) {
+                EntityPlayerMP player = (EntityPlayerMP) event.entityPlayer;
+                float range = getReach(player);
+                EntityItem item = getTargetedItem(player, range);
+                if (item != null && tryPickup(player, item)) {
                     event.setCanceled(true);
                 }
             }
@@ -154,90 +143,51 @@ public class Pickup {
     }
 
     @SubscribeEvent
-    public void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
-        if (event.getHand() == InteractionHand.MAIN_HAND && PickupConfig.NEW_BEHAVIOR.get() && event.getEntity() instanceof ServerPlayer player) {
-            float range = getReach(player);
-            ItemEntity item = getTargetedItem(player, range);
-            if (item != null) {
-                if (tryPickup(player, item, event.getHand())) {
-                    event.setCancellationResult(InteractionResult.SUCCESS);
-                    event.setCanceled(true);
-                }
+    public void onEntityInteract(EntityInteractEvent event) {
+        if (PickupConfig.NEW_BEHAVIOR && event.target instanceof EntityItem && event.entityPlayer instanceof EntityPlayerMP) {
+            EntityPlayerMP player = (EntityPlayerMP) event.entityPlayer;
+            if (tryPickup(player, (EntityItem) event.target)) {
+                event.setCanceled(true);
             }
         }
     }
 
     @SubscribeEvent
-    public void onRightClickItem(PlayerInteractEvent.RightClickItem event) {
-        if (event.getHand() == InteractionHand.MAIN_HAND && PickupConfig.NEW_BEHAVIOR.get() && event.getEntity() instanceof ServerPlayer player) {
-            float range = getReach(player);
-            ItemEntity item = getTargetedItem(player, range);
-            if (item != null) {
-                if (tryPickup(player, item, event.getHand())) {
-                    event.setCancellationResult(InteractionResult.SUCCESS);
-                    event.setCanceled(true);
-                }
-            }
-        }
-    }
+    public void onServerTick(TickEvent.ServerTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) return;
 
-    @SubscribeEvent
-    public void onServerTick(ServerTickEvent.Post event) {
-        int rate = PickupConfig.VISUAL_TICK_RATE.get();
-        if (event.getServer().getTickCount() % rate != 0) {
-            return;
-        }
+        serverTicks++;
+        if (serverTicks % PickupConfig.VISUAL_TICK_RATE != 0) return;
 
-        for (ServerPlayer player : event.getServer().getPlayerList().getPlayers()) {
-            float range = PickupConfig.OVERLAY_RANGE.get().floatValue();
-            if (PickupConfig.USE_PLAYER_RANGE.get()) {
-                range = getReach(player);
-            }
+        // Iterate through online players
+        List<EntityPlayerMP> players = MinecraftServer.getServer().getConfigurationManager().playerEntityList;
+        for (EntityPlayerMP player : players) {
+            float range = PickupConfig.USE_PLAYER_RANGE ? getReach(player) : (float) PickupConfig.OVERLAY_RANGE;
+            EntityItem coolItem = getTargetedItem(player, range);
 
-            ItemEntity coolItem = getTargetedItem(player, range);
+            AxisAlignedBB searchBox = player.getEntityBoundingBox()
+                    .addCoord(player.getLook(1.0F).xCoord * range, player.getLook(1.0F).yCoord * range, player.getLook(1.0F).zCoord * range)
+                    .expand(1.0D, 1.0D, 1.0D);
+            List<EntityItem> items = player.worldObj.getEntitiesWithinAABB(EntityItem.class, searchBox);
 
-            List<ItemEntity> items = player.level().getEntitiesOfClass(
-                    ItemEntity.class,
-                    player.getBoundingBox().expandTowards(player.getLookAngle().scale(range))
-            );
-
-            for (ItemEntity item : items) {
-                ((ItemEntityInterface) item).pickup$setPickup(!PickupConfig.NEW_BEHAVIOR.get());
-                ((ItemEntityInterface) item).pickup$setBigHitbox(PickupConfig.ENABLE_MODIFIED_HITBOX.get());
-                item.refreshDimensions();
+            for (EntityItem item : items) {
+                ((ItemEntityInterface) item).pickup$setPickup(!PickupConfig.NEW_BEHAVIOR);
+                ((ItemEntityInterface) item).pickup$setBigHitbox(PickupConfig.ENABLE_MODIFIED_HITBOX);
 
                 if (item == coolItem) {
-                    if (PickupConfig.ITEM_TAGS.get()) {
-                        Component name = Component.empty()
-                                .append(item.getItem().getHoverName())
-                                .append(Component.literal(" x" + item.getItem().getCount()).withStyle(ChatFormatting.GRAY));
-                        
-                        // Performance Optimization: Check current state to prevent redundant metadata sync packets
-                        Component currentName = item.getCustomName();
-                        if (currentName == null || !currentName.getString().equals(name.getString())) {
-                            item.setCustomName(name);
+                    if (PickupConfig.ITEM_TAGS) {
+                        String name = item.getEntityItem().getDisplayName() + " x" + item.getEntityItem().stackSize;
+                        if (item.getCustomNameTag() == null || !item.getCustomNameTag().equals(name)) {
+                            item.setCustomNameTag(name);
                         }
-                        if (!item.isCustomNameVisible()) {
-                            item.setCustomNameVisible(true);
-                        }
-                    }
-                    if (PickupConfig.ITEM_GLOW.get()) {
-                        if (!item.isCurrentlyGlowing()) {
-                            item.setGlowingTag(true);
-                        }
-                    } else {
-                        if (item.isCurrentlyGlowing()) {
-                            item.setGlowingTag(false);
+                        if (!item.getAlwaysRenderNameTag()) {
+                            item.setAlwaysRenderNameTag(true);
                         }
                     }
                 } else {
-                    // Performance Optimization: Check current state to prevent redundant metadata sync packets
-                    if (item.isCustomNameVisible()) {
-                        item.setCustomName(null);
-                        item.setCustomNameVisible(false);
-                    }
-                    if (item.isCurrentlyGlowing()) {
-                        item.setGlowingTag(false);
+                    if (item.getAlwaysRenderNameTag()) {
+                        item.setCustomNameTag("");
+                        item.setAlwaysRenderNameTag(false);
                     }
                 }
             }
