@@ -66,3 +66,13 @@ processResources {
         expand 'version': project.version
     }
 }
+
+jar {
+    manifest {
+        attributes([
+            "MixinConfigs": "pickup.mixins.json",
+            "FMLCorePluginContainsFMLMod": "true",
+            "ForceLoadAsMod": "true"
+        ])
+    }
+}
