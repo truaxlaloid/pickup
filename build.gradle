@@ -30,13 +30,6 @@ loom {
     }
 }
 
-// Crucial: Essential Loom requires resource output directories to match the classes directory
-sourceSets {
-    main {
-        output.resourcesDir = file("${buildDir}/classes/java/main")
-    }
-}
-
 repositories {
     mavenCentral()
     // Using the official Sponge public repository is required for legacy SNAPSHOT dependencies
