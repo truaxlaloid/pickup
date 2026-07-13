@@ -30,9 +30,11 @@ loom {
     }
 }
 
-// Crucial: Essential Loom requires source output directories to align
-sourceSets.main {
-    output.setResourcesDir(sourceSets.main.flatMap { it.java.classesDirectory })
+// Crucial: Essential Loom requires resource output directories to match the classes directory
+sourceSets {
+    main {
+        output.resourcesDir = file("${buildDir}/classes/java/main")
+    }
 }
 
 repositories {
