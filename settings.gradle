@@ -1,20 +1,22 @@
 pluginManagement {
     repositories {
-        maven {
-            name = 'GTNH Maven'
-            url = 'https://nexus.gtnewhorizons.com/repository/public/'
-        }
-        maven { 
-            name = 'CleanroomMC'
-            url = 'https://maven.cleanroommc.com' 
-        }
-        gradlePluginPortal()
         mavenCentral()
+        maven { url = 'https://repo.essential.gg/repository/maven-public' }
+        maven { url = 'https://maven.architectury.dev' }
+        maven { url = 'https://maven.fabricmc.net' }
+        maven { url = 'https://maven.minecraftforge.net/' }
+        gradlePluginPortal()
+    }
+    resolutionStrategy {
+        eachPlugin {
+            if (requested.id.id == "gg.essential.loom") {
+                useModule("gg.essential:architectury-loom:${requested.version}")
+            }
+        }
     }
 }
 
 plugins {
-    // Automatically downloads and provisions JDK 8 in the background
     id 'org.gradle.toolchains.foojay-resolver-convention' version '0.8.0'
 }
 
