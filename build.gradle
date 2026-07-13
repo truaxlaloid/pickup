@@ -39,7 +39,8 @@ sourceSets {
 
 repositories {
     mavenCentral()
-    maven { url = 'https://repo.spongepowered.org/maven/' }
+    // Using the official Sponge public repository is required for legacy SNAPSHOT dependencies
+    maven { url = 'https://repo.spongepowered.org/repository/maven-public/' }
     maven { url = 'https://repo.essential.gg/repository/maven-public' }
 }
 
@@ -48,8 +49,14 @@ dependencies {
     mappings "de.oceanlabs.mcp:mcp_stable:22-1.8.9"
     forge "net.minecraftforge:forge:1.8.9-11.15.1.2318-1.8.9"
 
-    // Mixin Annotation Processor
-    annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
+    // 1.8.9 Forge LaunchWrapper requires Mixin 0.7.11 at runtime to avoid FML crashes.
+    // This is added to implementation with transitive dependencies disabled.
+    implementation("org.spongepowered:mixin:0.7.11-SNAPSHOT") {
+        transitive = false
+    }
+    
+    // Mixin 0.8.4-SNAPSHOT is used specifically as the annotationProcessor.
+    annotationProcessor "org.spongepowered:mixin:0.8.4-SNAPSHOT"
 }
 
 processResources {
