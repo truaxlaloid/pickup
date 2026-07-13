@@ -19,6 +19,7 @@ public abstract class ItemEntityMixin extends Entity implements ItemEntityInterf
     
     @Shadow private int delayBeforeCanPickup;
     @Shadow private String owner;
+    @Shadow private int age; // Shadows the private 'age' field from EntityItem
 
     @Unique public boolean canPickup = false;
     @Unique public boolean bigHitbox = false;
@@ -59,7 +60,8 @@ public abstract class ItemEntityMixin extends Entity implements ItemEntityInterf
                 ItemStack itemstack = ((EntityItem) (Object) this).getEntityItem();
                 int i = itemstack.stackSize;
 
-                if (this.delayBeforeCanPickup == 0 && (this.owner == null || 6000 - ((EntityItem)(Object)this).age <= 200 || this.owner.equals(entityIn.getName())) && entityIn.inventory.addItemStackToInventory(itemstack)) {
+                // Uses the shadowed 'this.age' to bypass private field access compile issues
+                if (this.delayBeforeCanPickup == 0 && (this.owner == null || 6000 - this.age <= 200 || this.owner.equals(entityIn.getName())) && entityIn.inventory.addItemStackToInventory(itemstack)) {
                     this.worldObj.playSoundAtEntity(entityIn, "random.pop", 0.2F, ((this.rand.nextFloat() - this.rand.nextFloat()) * 0.7F + 1.0F) * 2.0F);
                     entityIn.onItemPickup(((EntityItem) (Object) this), i);
 
