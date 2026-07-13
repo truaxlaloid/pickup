@@ -43,11 +43,9 @@ public class Pickup {
         Vec3 lookAngle = player.getLook(1.0F);
         Vec3 end = eyePos.addVector(lookAngle.xCoord * range, lookAngle.yCoord * range, lookAngle.zCoord * range);
 
-        // Raytrace block collisions
         MovingObjectPosition hit = player.worldObj.rayTraceBlocks(eyePos, end, false, true, false);
         Vec3 newEnd = (hit != null && hit.typeOfHit != MovingObjectPosition.MovingObjectType.MISS) ? hit.hitVec : end;
 
-        // Search for items in target path
         AxisAlignedBB searchBox = player.getEntityBoundingBox()
                 .addCoord(lookAngle.xCoord * range, lookAngle.yCoord * range, lookAngle.zCoord * range)
                 .expand(1.0D, 1.0D, 1.0D);
@@ -82,7 +80,6 @@ public class Pickup {
         int originalCount = itemStack.stackSize;
         boolean addedAny = false;
 
-        // 1.8.9 inventory handling
         if (player.getHeldItem() == null && PickupConfig.USE_CURRENT_SLOT) {
             player.setCurrentItemOrArmor(0, itemStack.copy());
             itemStack.stackSize = 0;
@@ -95,7 +92,6 @@ public class Pickup {
 
         if (!addedAny) return false;
 
-        // Play pop sound
         player.worldObj.playSoundAtEntity(player, "random.pop", 0.2F, ((player.getRNG().nextFloat() - player.getRNG().nextFloat()) * 0.7F + 1.0F) * 2.0F);
 
         int pickedUpCount = originalCount - itemStack.stackSize;
@@ -117,7 +113,7 @@ public class Pickup {
         }
 
         player.onItemPickup(item, pickedUpCount);
-        player.triggerAchievement(StatList.objectPickupStats[Item.getIdFromItem(itemStack.getItem())]);
+        player.triggerAchievement(StatList.getObjectsPickUpStats(itemStack.getItem()));
 
         if (itemStack.stackSize <= 0) {
             item.setDead();
@@ -159,7 +155,6 @@ public class Pickup {
         serverTicks++;
         if (serverTicks % PickupConfig.VISUAL_TICK_RATE != 0) return;
 
-        // Iterate through online players
         List<EntityPlayerMP> players = MinecraftServer.getServer().getConfigurationManager().playerEntityList;
         for (EntityPlayerMP player : players) {
             float range = PickupConfig.USE_PLAYER_RANGE ? getReach(player) : (float) PickupConfig.OVERLAY_RANGE;
