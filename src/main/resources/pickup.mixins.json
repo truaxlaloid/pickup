@@ -2,11 +2,10 @@
   "required": true,
   "minVersion": "0.8",
   "package": "net.johnseagull.pickup.mixin",
-  "compatibilityLevel": "JAVA_21",
+  "compatibilityLevel": "JAVA_8",
   "mixins": [
     "EntityMixin",
-    "ItemEntityMixin",
-    "ServerboundInteractPacketMixin"
+    "ItemEntityMixin"
   ],
   "injectors": {
     "defaultRequire": 1
