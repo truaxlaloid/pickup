@@ -1,7 +1,8 @@
 plugins {
+    id 'idea'
     id 'java'
-    id 'maven-publish'
-    id 'com.gtnewhorizons.retrofuturagradle' version '1.4.1'
+    id 'gg.essential.loom' version '0.10.0.+'
+    id 'dev.architectury.architectury-pack200' version '0.1.3'
 }
 
 version = "1.0-1.8.9"
@@ -11,28 +12,41 @@ java {
     toolchain.languageVersion = JavaLanguageVersion.of(8)
 }
 
-minecraft {
-    version = "1.8.9"
-    mappings = "stable_22"
-    
-    mixin {
-        add sourceSets.main, "pickup.mixins.refmap.json"
+loom {
+    launchConfigs {
+        client {
+            // Mixin debugging configurations
+            property "mixin.debug", "true"
+            arg "--tweakClass", "org.spongepowered.asm.launch.MixinTweaker"
+        }
     }
+    forge {
+        // Pack200 handles packaging decompression for legacy Forge
+        pack200Provider.set(new dev.architectury.pack200.java.Pack200Adapter())
+        mixinConfig "pickup.mixins.json"
+    }
+    mixin {
+        defaultRefmapName.set("pickup.mixins.refmap.json")
+    }
+}
+
+// Crucial: Essential Loom requires source output directories to align
+sourceSets.main {
+    output.setResourcesDir(sourceSets.main.flatMap { it.java.classesDirectory })
 }
 
 repositories {
     mavenCentral()
-    maven {
-        name = "GTNH Maven"
-        url = "https://nexus.gtnewhorizons.com/repository/public/"
-    }
-    maven {
-        name = "CleanroomMC"
-        url = "https://maven.cleanroommc.com"
-    }
+    maven { url = 'https://repo.spongepowered.org/maven/' }
+    maven { url = 'https://repo.essential.gg/repository/maven-public' }
 }
 
 dependencies {
+    minecraft "com.mojang:minecraft:1.8.9"
+    mappings "de.oceanlabs.mcp:mcp_stable:22-1.8.9"
+    forge "net.minecraftforge:forge:1.8.9-11.15.1.2318-1.8.9"
+
+    // Mixin Annotation Processor
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
 }
 
