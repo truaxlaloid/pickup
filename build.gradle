@@ -23,6 +23,10 @@ minecraft {
 repositories {
     mavenCentral()
     maven {
+        name = "GTNH Maven"
+        url = "https://nexus.gtnewhorizons.com/repository/public/"
+    }
+    maven {
         name = "CleanroomMC"
         url = "https://maven.cleanroommc.com"
     }
